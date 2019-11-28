@@ -79,12 +79,16 @@ bind_layers(UDP, MessagingProtocol, dport=65012)
 
 
 def sum_type(pkt):
+    print(pkt.summary())
+
+    if MessagingProtocol not in pkt:
+        return
+
     t = packet_types[pkt[MessagingProtocol].type]
     l = pkt[MessagingProtocol].load
     u = pkt[MessagingProtocol].uid
     c = pkt[MessagingProtocol].cid
 
-    print(pkt.summary())
     print(f"    type : {t}")
     print(f"  {'>' if l != b'' else ' '} load : {l}")
     print(f"  {'>' if u != 0 else ' '}  uid : {u}")
@@ -96,8 +100,8 @@ def xshow():
     sniff(prn=lambda x: x.show(), filter="udp port 65012", store=False)
 
 
-def xsum():
-    sniff(prn=sum_type, filter="udp port 65012", store=False)
+def xsum(port=65012):
+    sniff(prn=sum_type, filter=f"udp port {port}", store=False)
 
 
 def netw(dst=None):

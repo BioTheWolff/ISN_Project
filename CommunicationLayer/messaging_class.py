@@ -5,6 +5,8 @@ import socket as so
 
 class MessagingBase:
     ip = so.gethostbyname(so.gethostname())
+    port = 65012
+
     packet_types = {
         # Se calque sur le DHCP discovery process
         10: "discovery",
@@ -95,9 +97,9 @@ class MessagingBase:
         ip_pkt = IP(src=self.ip, dst=ip_dst)
 
         if transport_type == 'TCP':
-            tsp_pkt = TCP(sport=65012, dport=65012, flags=tsp_flags)
+            tsp_pkt = TCP(sport=self.port, dport=self.port, flags=tsp_flags)
         else:
-            tsp_pkt = UDP(sport=65012, dport=65012)
+            tsp_pkt = UDP(sport=self.port, dport=self.port)
 
         mp_pkt = self.MessagingProtocol(type=mp_type, load=payload, uid=uid)
 
@@ -118,7 +120,7 @@ class MessagingBase:
 
         # Packet is of form:
         # <IP  frag=0 proto=udp |<UDP  sport=9559 dport=9559 |<MessagingProtocol |>>>
-        if IP in pkt and UDP in pkt and pkt[UDP].sport == 65012 and pkt[UDP].dport == 65012 \
+        if IP in pkt and UDP in pkt and pkt[UDP].sport == self.port and pkt[UDP].dport == self.port \
                 and self.MessagingProtocol in pkt:
             # The recieved packet concerns us
             packet_load = pkt[self.MessagingProtocol].load
@@ -142,10 +144,10 @@ class MessagingBase:
             Les étapes Discovery (client), Offer (serveur), Request (client) et Acknowledge (serveur)
             se déroulent par UDP, car on préfèrera la rapidité des paquets UDP à la conservation des TCP
         """
-        bind_layers(UDP, self.MessagingProtocol, sport=65012)
-        bind_layers(UDP, self.MessagingProtocol, dport=65012)
+        bind_layers(UDP, self.MessagingProtocol, sport=self.port)
+        bind_layers(UDP, self.MessagingProtocol, dport=self.port)
 
         # Bind TCP
         # Les paquets TCP seront utilisés pour toutes transmissions ultérieures au discovery
-        bind_layers(TCP, self.MessagingProtocol, sport=65012)
-        bind_layers(TCP, self.MessagingProtocol, dport=65012)
+        bind_layers(TCP, self.MessagingProtocol, sport=self.port)
+        bind_layers(TCP, self.MessagingProtocol, dport=self.port)

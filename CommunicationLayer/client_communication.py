@@ -7,6 +7,7 @@ from time import sleep
 class Client(MessagingBase):
     # L'ID est défini à -1 dans le init, puis à un nombre positif ou nul lors de la réponse du serveur
     uid = None
+    nickname = None
 
     # Les conversations sont sous la forme [conv1_id, conv2_id, ...]
     convs = None
