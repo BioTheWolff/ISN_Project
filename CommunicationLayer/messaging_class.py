@@ -63,7 +63,7 @@ class MessagingBase:
                              # Client-related
                              30: "update",
                              31: "U_ACK",
-                             32: "U_MOD",
+                             32: "U_DNY",
 
                              # Data transmission
                              33: "download",
@@ -131,7 +131,7 @@ class MessagingBase:
                     print(f"found debug packet from {pkt[IP].src}")
 
             # On passe au handler concerné qui saura s'en occuper
-            self.handling_functions[packet_type](pkt, packet_subtype, packet_load)
+            self.handling_functions[packet_type](pkt, packet_subtype)
 
     def bind_layers_to_protocol(self):
         """

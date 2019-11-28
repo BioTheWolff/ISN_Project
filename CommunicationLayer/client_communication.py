@@ -15,6 +15,8 @@ class Client(MessagingBase):
 
     sniffer = None
 
+    hooks = None
+
     def wait_for(self, secs, cond, final_raise):
         for _ in range(secs):
             if self.answers[cond] is True:
@@ -26,6 +28,12 @@ class Client(MessagingBase):
                 raise final_raise
             elif callable(final_raise):
                 final_raise()
+
+    def bind_hook(self, name, func):
+        if name not in self.hooks.keys():
+            return
+
+        self.hooks[name] = func
 
     def __init__(self, verbose=False):
         self.bind_layers_to_protocol()
@@ -39,13 +47,21 @@ class Client(MessagingBase):
             'request': False
         }
 
+        self.hooks = {
+            'server_failure': None
+        }
+
         self.verbose = verbose
 
         self.handling_functions = {
-            1: lambda pkt, s, _: self.connexion_process_handler(pkt, s)
+            1: lambda pkt, s: self.connexion_process_handler(pkt, s)
         }
 
-    def __call__(self, server_failure_hook):
+    def __call__(self):
+        # On teste d'abord si un hook n'a pas été défini
+        if None in self.hooks.values():
+            raise Exception("A hook has not been given")
+
         # On définit le sniffer
         self.sniffer = AsyncSniffer(prn=self.test_concern, filter="udp port 65012", store=False)
         self.sniffer.start()
@@ -55,12 +71,12 @@ class Client(MessagingBase):
 
         # On envoie la discovery et on attend
         self.build_and_send_packet('255.255.255.255', 'UDP', 'discovery')
-        self.wait_for(10, 'discovery', server_failure_hook)
+        self.wait_for(10, 'discovery', self.hooks['server_failure'])
 
         # On définit la requête en demandant le pseudo du client
         self.nickname = str(input("Your nickname: "))
         self.build_and_send_packet(self.server_ip, 'UDP', 'request', payload=self.nickname)
-        self.wait_for(10, 'request', server_failure_hook)
+        self.wait_for(10, 'request', self.hooks['server_failure'])
 
     def connexion_process_handler(self, pkt, subtype):
         """
@@ -86,3 +102,8 @@ class Client(MessagingBase):
         elif subtype == 4:
             # On reçoit une Modify, le pseudo est déjà pris par quelqu'un
             raise NotImplementedError
+
+    def close_session(self):
+        if self.uid != -1 and self.nickname and self.server_ip:
+            self.build_and_send_packet(self.server_ip, 'UDP', 'terminate', uid=self.uid)
+        return

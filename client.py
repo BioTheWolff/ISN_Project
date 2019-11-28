@@ -1,10 +1,15 @@
 from CommunicationLayer.client_communication import Client
 
 
-def server_failure():
+def test():
     print('The server was not found or is not responding in time.')
     exit(1)
 
 
 instance = Client(verbose=True)
-instance(server_failure)
+
+instance.bind_hook('server_failure', test)
+
+instance()
+
+instance.close_session()

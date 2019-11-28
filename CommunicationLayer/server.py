@@ -27,7 +27,7 @@ class Server(MessagingBase):
 
         self.handling_functions = {
             # Discovery type
-            1: lambda pkt, s, _: self.connexion_process_handler(pkt, s),
+            1: lambda pkt, s: self.connexion_process_handler(pkt, s),
             9: lambda *_: print(self.clients, '\n', self.nicknames)
         }
 
@@ -60,14 +60,14 @@ class Server(MessagingBase):
 
             if nickname in self.nicknames.values():
                 # Le pseudo existe déjà, on renvoie un Modify
-                self.build_and_send_packet(ip_dst, 'UDP', 'modify')
+                self.build_and_send_packet(ip_dst, 'UDP', 'R_MOD')
                 return
             else:
                 # On crée le client et on l'enregistre
                 self.clients[self.last_uid] = ip_dst
                 self.nicknames[self.last_uid] = nickname
 
-                self.build_and_send_packet(ip_dst, 'UDP', 'acknowledge', uid=self.last_uid)
+                self.build_and_send_packet(ip_dst, 'UDP', 'R_ACK', uid=self.last_uid)
 
                 self.last_uid += 1
 
