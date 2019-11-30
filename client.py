@@ -8,7 +8,7 @@ def test():
 
 instance = Client(verbose=True)
 
-instance.bind_hook('server_failure', test)
+instance.bind_hook('no_response', test)
 
 instance()
 

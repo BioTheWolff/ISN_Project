@@ -38,6 +38,15 @@ class MessagingBase:
     handling_functions = None
     verbose = None
 
+    hooks = {
+        'no_response': None,
+        'client_connected': None,
+        'client_departed': None,
+        'channel_created': None,
+        'channel_deleted': None,
+        'message': None
+    }
+
     # Classe personnalisée de paquets
     class MessagingProtocol(Packet):
         name = "MessagingProtocol "
@@ -78,6 +87,12 @@ class MessagingBase:
             IntField("cid", 0),  # Conv id
             StrField("load", "")
         ]
+
+    def bind_hook(self, name, func):
+        if name not in self.hooks.keys():
+            return
+
+        self.hooks[name] = func
 
     def build_and_send_packet(self, ip_dst, transport_type, mp_type, payload='', uid=0, tsp_flags=None):
         """

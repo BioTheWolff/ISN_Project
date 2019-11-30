@@ -1,5 +1,5 @@
 from scapy.all import *
-from scapy.layers.inet import UDP, IP
+from scapy.layers.inet import IP
 from .messaging_class import MessagingBase
 from time import sleep
 
@@ -30,12 +30,6 @@ class Client(MessagingBase):
             elif callable(final_raise):
                 final_raise()
 
-    def bind_hook(self, name, func):
-        if name not in self.hooks.keys():
-            return
-
-        self.hooks[name] = func
-
     def __init__(self, verbose=False):
         self.bind_layers_to_protocol()
 
@@ -46,10 +40,6 @@ class Client(MessagingBase):
         self.answers = {
             'discovery': False,
             'request': False
-        }
-
-        self.hooks = {
-            'server_failure': None
         }
 
         self.verbose = verbose
