@@ -1,6 +1,7 @@
 from scapy.all import *
 from scapy.layers.inet import IP
 from .messaging_class import MessagingBase
+import threading
 from time import sleep
 
 
@@ -13,63 +14,140 @@ class Client(MessagingBase):
     convs = None
 
     server_ip = None
-
     sniffer = None
 
-    hooks = None
+    @staticmethod
+    def raise_or_call(func):
+        if type(func) is Exception:
+            raise func
+        elif callable(func):
+            func()
+        else:
+            raise Exception("Hook not callable nor raisable.")
 
     def wait_for(self, secs, cond, final_raise):
-        for _ in range(secs):
-            if self.answers[cond] is True:
+        for i in range(secs):
+            if self.answers[cond]:
                 break
             sleep(1)
 
         if not self.answers[cond]:
-            if type(final_raise) is Exception:
-                raise final_raise
-            elif callable(final_raise):
-                final_raise()
+            self.raise_or_call(final_raise)
+        else:
+            self.raise_or_call(self.hooks[f"successful_{cond}"])
 
+    #
+    # DUNDERS
+    #
     def __init__(self, verbose=False):
         self.bind_layers_to_protocol()
 
         # Init
         self.uid = -1
         self.convs = []
+        self.server_ip = ''
+        self.nickname = ''
 
         self.answers = {
             'discovery': False,
             'request': False
         }
+        self.hooks = {
+            'no_response': None,
+
+            'successful_discovery': None,
+            'successful_request': None,
+
+            'client_connected': None,
+            'client_departed': None,
+            'channel_created': None,
+            'channel_deleted': None,
+            'message': None
+        }
 
         self.verbose = verbose
 
         self.handling_functions = {
-            1: lambda pkt, s: self.connexion_process_handler(pkt, s)
+            1: lambda pkt, s: self.handler_connection_process(pkt, s)
         }
-
-    def __call__(self):
-        # On teste d'abord si un hook n'a pas été défini
-        if None in self.hooks.values():
-            raise Exception("A hook has not been given")
 
         # On définit le sniffer
         self.sniffer = AsyncSniffer(prn=self.test_concern, filter="udp port 65012", store=False)
         self.sniffer.start()
 
+    def __call__(self, action, **kwargs):
+        # On teste d'abord si un hook n'a pas été défini
+        if None in self.hooks.values():
+            pass
+            # raise Exception("A hook has not been given")
+
+        # On définit les arguments requis pour chaque action
+        arguments = {
+            'discovery': None,
+            'request': ['nickname']
+        }
+
+        # On vérifie que l'action existe bien
+        if action not in arguments.keys():
+            raise Exception("Action not recognised")
+
+        params = arguments[action]
+
+        if params:
+            # Si il y a des paramètres à passer
+            # On teste alors si chaque paramètre requis est présent dans ceux passés
+            for param in params:
+                if param not in kwargs:
+                    raise Exception(f"Missing parameter {param} for action {action}")
+
+            Client.__dict__[f"action_{action}"](self, *[kwargs[i] for i in params])
+        else:
+            # Si l'action peut être appelée sans passer de paramètres
+            Client.__dict__[f"action_{action}"](self)
+
+        if action in ['discovery', 'update', 'request']:
+            x = threading.Thread(target=self.wait_for, args=(10, action, self.hooks['no_response']), daemon=True)
+            x.start()
+
+    #
+    # ACTIONS
+    #
+    def action_discovery(self):
         if self.verbose:
             print("sending discovery packet")
 
         # On envoie la discovery et on attend
         self.build_and_send_packet('255.255.255.255', 'UDP', 'discovery')
-        self.wait_for(10, 'discovery', self.hooks['server_failure'])
+
+    def action_request(self, nickname):
+        if not nickname:
+            return False
 
         # On définit la requête en demandant le pseudo du client
-        self.nickname = str(input("Your nickname: "))
+        self.nickname = nickname
         self.build_and_send_packet(self.server_ip, 'UDP', 'request', payload=self.nickname)
-        self.wait_for(10, 'request', self.hooks['server_failure'])
 
-    def connexion_process_handler(self, pkt, subtype):
+        return self.wait_for(10, 'request', self.hooks['no_response'])
+
+    def action_terminate(self):
+        if self.uid != -1 and self.nickname and self.server_ip:
+            # Terminate packet
+            self.build_and_send_packet(self.server_ip, 'UDP', 'terminate', uid=self.uid)
+
+            # Variables à redéfinir comme avant la connexion
+            self.uid = -1
+            self.nickname = ''
+            self.server_ip = ''
+            self.convs = []
+            self.answers = {
+                'discovery': False,
+                'request': False
+            }
+
+    #
+    # HANDLERS
+    #
+    def handler_connection_process(self, pkt, subtype):
         """
 
         :param pkt: Paquet reçu
@@ -89,12 +167,12 @@ class Client(MessagingBase):
             self.answers['request'] = True
 
             self.uid = pkt[self.MessagingProtocol].uid
-            print(f"Connected with UID {self.uid}")
         elif subtype == 4:
             # On reçoit une Modify, le pseudo est déjà pris par quelqu'un
             raise NotImplementedError
 
+    #
+    # ALIASES
+    #
     def close_session(self):
-        if self.uid != -1 and self.nickname and self.server_ip:
-            self.build_and_send_packet(self.server_ip, 'UDP', 'terminate', uid=self.uid)
-        return
+        self.action_terminate()

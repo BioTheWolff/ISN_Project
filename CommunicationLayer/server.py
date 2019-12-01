@@ -31,6 +31,15 @@ class Server(MessagingBase):
             9: lambda *_: print(self.clients, '\n', self.nicknames)
         }
 
+        self.hooks = {
+            'no_response': None,
+            'client_connected': None,
+            'client_departed': None,
+            'channel_created': None,
+            'channel_deleted': None,
+            'message': None
+        }
+
     def __call__(self):
         if self.verbose:
             print("starting to listen")

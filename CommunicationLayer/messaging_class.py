@@ -38,14 +38,7 @@ class MessagingBase:
     handling_functions = None
     verbose = None
 
-    hooks = {
-        'no_response': None,
-        'client_connected': None,
-        'client_departed': None,
-        'channel_created': None,
-        'channel_deleted': None,
-        'message': None
-    }
+    hooks = None
 
     # Classe personnalisée de paquets
     class MessagingProtocol(Packet):
