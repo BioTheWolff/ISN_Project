@@ -4,42 +4,6 @@ import socket as so
 
 
 class MessagingBase:
-    ip = so.gethostbyname(so.gethostname())
-    port = 65012
-
-    packet_types = {
-        # Se calque sur le DHCP discovery process
-        10: "discovery",
-        11: "offer",
-        12: "request",
-        13: "R_ACK",
-        14: "R_MOD",
-        15: "terminate",
-
-        # Events
-        20: "new_user",
-        21: "new_channel",
-        22: "user_left_channel",
-        23: "user_joined_channel",
-
-        # Client-related
-        30: "update",
-        31: "U_ACK",
-        32: "U_MOD",
-
-        # Data transmission
-        33: "download",
-        34: "response",
-
-        # Messages
-        40: "message"
-    }
-
-    handling_functions = None
-    verbose = None
-
-    hooks = None
-
     # Classe personnalisée de paquets
     class MessagingProtocol(Packet):
         name = "MessagingProtocol "
@@ -80,6 +44,41 @@ class MessagingBase:
             IntField("cid", 0),  # Conv id
             StrField("load", "")
         ]
+
+    ip = so.gethostbyname(so.gethostname())
+    port = 65012
+
+    packet_types = {
+        # Se calque sur le DHCP discovery process
+        10: "discovery",
+        11: "offer",
+        12: "request",
+        13: "R_ACK",
+        14: "R_MOD",
+        15: "terminate",
+
+        # Events
+        20: "new_user",
+        21: "new_channel",
+        22: "user_left_channel",
+        23: "user_joined_channel",
+
+        # Client-related
+        30: "update",
+        31: "U_ACK",
+        32: "U_MOD",
+
+        # Data transmission
+        33: "download",
+        34: "response",
+
+        # Messages
+        40: "message"
+    }
+
+    handling_functions = None
+    verbose = None
+    hooks = None
 
     def bind_hook(self, name, func):
         if name not in self.hooks.keys():

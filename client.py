@@ -1,6 +1,5 @@
 from CommunicationLayer.client_communication import Client
 from tkinter import *
-import asyncio as a
 
 
 def test():
@@ -41,7 +40,6 @@ status = Label(text="Waiting...")
 discovery_button = Button(win, text='Discovery', command=discover)
 request_button = Button(win, text="Request for 'BioWolf'", command=request)
 terminate_button = Button(win, text="Close session", command=terminate)
-wild_button = Button(win, text="WILD", command=lambda: status.config(text="WIIIIIILD"))
 
 instance = Client()
 instance.bind_hook('no_response', test)
@@ -50,7 +48,6 @@ instance.bind_hook('successful_request', requested)
 
 status.pack()
 discovery_button.pack()
-wild_button.pack()
 
 win.mainloop()
 

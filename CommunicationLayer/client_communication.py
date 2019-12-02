@@ -84,6 +84,8 @@ class Client(MessagingBase):
         # On définit les arguments requis pour chaque action
         arguments = {
             'discovery': None,
+            'terminate': None,
+
             'request': ['nickname']
         }
 
@@ -100,14 +102,16 @@ class Client(MessagingBase):
                 if param not in kwargs:
                     raise Exception(f"Missing parameter {param} for action {action}")
 
-            Client.__dict__[f"action_{action}"](self, *[kwargs[i] for i in params])
+            thread = threading.Thread(target=Client.__dict__[f"action_{action}"],
+                                      args=(self, *[kwargs[i] for i in params]),
+                                      daemon=True)
         else:
             # Si l'action peut être appelée sans passer de paramètres
-            Client.__dict__[f"action_{action}"](self)
+            thread = threading.Thread(target=Client.__dict__[f"action_{action}"],
+                                      args=(self,),
+                                      daemon=True)
 
-        if action in ['discovery', 'update', 'request']:
-            x = threading.Thread(target=self.wait_for, args=(10, action, self.hooks['no_response']), daemon=True)
-            x.start()
+        thread.start()
 
     #
     # ACTIONS
@@ -119,6 +123,8 @@ class Client(MessagingBase):
         # On envoie la discovery et on attend
         self.build_and_send_packet('255.255.255.255', 'UDP', 'discovery')
 
+        self.wait_for(10, 'discovery', self.hooks['no_response'])
+
     def action_request(self, nickname):
         if not nickname:
             return False
@@ -127,7 +133,7 @@ class Client(MessagingBase):
         self.nickname = nickname
         self.build_and_send_packet(self.server_ip, 'UDP', 'request', payload=self.nickname)
 
-        return self.wait_for(10, 'request', self.hooks['no_response'])
+        self.wait_for(10, 'request', self.hooks['no_response'])
 
     def action_terminate(self):
         if self.uid != -1 and self.nickname and self.server_ip:
@@ -175,4 +181,4 @@ class Client(MessagingBase):
     # ALIASES
     #
     def close_session(self):
-        self.action_terminate()
+        self.__call__('terminate')
