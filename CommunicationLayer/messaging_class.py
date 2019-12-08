@@ -2,6 +2,7 @@ from scapy.all import *
 from scapy.layers.inet import UDP, IP, TCP
 import socket as so
 from time import time as now_timestamp
+import netifaces
 
 
 class MessagingBase:
@@ -105,6 +106,15 @@ class MessagingBase:
     handling_functions = None
     verbose = None
     hooks = None
+
+    @staticmethod
+    def resolve_broadcast_address():
+        for _, interface in enumerate(netifaces.interfaces()):
+            i = netifaces.ifaddresses(interface)
+
+            if netifaces.AF_INET in i:
+                if i[netifaces.AF_INET][0]['addr'] != '127.0.0.1':
+                    return i[netifaces.AF_INET][0]['broadcast']
 
     @staticmethod
     def bin_to_str(x):

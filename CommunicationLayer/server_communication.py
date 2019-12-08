@@ -22,6 +22,8 @@ class Server(MessagingBase):
     def __init__(self, verbose=None):
         self.bind_layers_to_protocol()
 
+        self.broadcast_addr = self.resolve_broadcast_address()
+
         # Init
         self.convs = {
             1: self.Channel(1, 'Test1', 'chan')
@@ -72,7 +74,7 @@ class Server(MessagingBase):
 
         if subtype == 0:
             # On a Discovery du client, on lui renvoie une Offer
-            self.build_and_send_packet('255.255.255.255', 'offer')
+            self.build_and_send_packet(self.broadcast_addr, 'offer')
         elif subtype == 2:
             # On a une Request du client
             # Réponses possibles: Acknowledge ou Modify

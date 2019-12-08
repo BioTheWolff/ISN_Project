@@ -44,6 +44,8 @@ class Client(MessagingBase):
     def __init__(self, verbose=False):
         self.bind_layers_to_protocol()
 
+        self.broadcast_addr = self.resolve_broadcast_address()
+
         # Init
         self.uid = -1
         self.convs = {}
@@ -127,7 +129,7 @@ class Client(MessagingBase):
             print("sending discovery packet")
 
         # On envoie la discovery et on attend
-        self.build_and_send_packet('255.255.255.255', 'discovery')
+        self.build_and_send_packet(self.broadcast_addr, 'discovery')
 
         self.wait_for(10, 'discovery', self.hooks['no_response'])
 
