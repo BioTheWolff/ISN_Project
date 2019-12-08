@@ -18,22 +18,22 @@ packet_types = {
         15: "terminate",
 
         # Events
-        20: "new_user",
-        21: "new_channel",
-        22: "user_left_channel",
-        23: "user_joined_channel",
+        20: "user_new",
+        21: "channel_new",
+        22: "user_left",
+        23: "user_joined",
 
         # Client-related
         30: "update",
         31: "U_ACK",
-        32: "U_MOD",
+        32: "U_DNY",
 
         # Data transmission
-        33: "download",
-        34: "response",
+        40: "download",
+        41: "response",
 
         # Messages
-        40: "message"
+        50: "message"
     }
 
 
@@ -51,22 +51,22 @@ class MessagingProtocol(Packet):
                          15: "terminate",
 
                          # Events
-                         20: "new_user",
-                         21: "new_channel",
-                         22: "user_left_channel",
-                         23: "user_joined_channel",
+                         20: "user_new",
+                         21: "channel_new",
+                         22: "user_left",
+                         23: "user_joined",
 
                          # Client-related
                          30: "update",
                          31: "U_ACK",
-                         32: "U_MOD",
+                         32: "U_DNY",
 
                          # Data transmission
-                         33: "download",
-                         34: "response",
+                         40: "download",
+                         41: "response",
 
                          # Messages
-                         40: "message"
+                         50: "message"
                      }),
         IntField("uid", 0),  # User id
         IntField("cid", 0),  # Conv id

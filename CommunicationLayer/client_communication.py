@@ -3,6 +3,7 @@ from scapy.layers.inet import IP
 from .messaging_class import MessagingBase
 import threading
 from time import sleep
+import json
 
 
 class Client(MessagingBase):
@@ -12,16 +13,17 @@ class Client(MessagingBase):
 
     # Les conversations sont sous la forme [conv1_id, conv2_id, ...]
     convs = None
+    available_convs = None
 
     server_ip = None
     sniffer = None
 
     @staticmethod
-    def raise_or_call(func):
-        if type(func) is Exception:
-            raise func
-        elif callable(func):
-            func()
+    def raise_or_call(hook):
+        if type(hook) is Exception:
+            raise hook
+        elif callable(hook):
+            hook()
         else:
             raise Exception("Hook not callable nor raisable.")
 
@@ -44,7 +46,8 @@ class Client(MessagingBase):
 
         # Init
         self.uid = -1
-        self.convs = []
+        self.convs = {}
+        self.available_convs = {}
         self.server_ip = ''
         self.nickname = ''
 
@@ -57,6 +60,8 @@ class Client(MessagingBase):
 
             'successful_discovery': None,
             'successful_request': None,
+
+            'init_channels_list': None,
 
             'client_connected': None,
             'client_departed': None,
@@ -85,6 +90,7 @@ class Client(MessagingBase):
         arguments = {
             'discovery': None,
             'terminate': None,
+            'request_available_channels': None,
 
             'request': ['nickname']
         }
@@ -121,7 +127,7 @@ class Client(MessagingBase):
             print("sending discovery packet")
 
         # On envoie la discovery et on attend
-        self.build_and_send_packet('255.255.255.255', 'UDP', 'discovery')
+        self.build_and_send_packet('255.255.255.255', 'discovery')
 
         self.wait_for(10, 'discovery', self.hooks['no_response'])
 
@@ -131,14 +137,14 @@ class Client(MessagingBase):
 
         # On définit la requête en demandant le pseudo du client
         self.nickname = nickname
-        self.build_and_send_packet(self.server_ip, 'UDP', 'request', payload=self.nickname)
+        self.build_and_send_packet(self.server_ip, 'request', payload=self.nickname)
 
         self.wait_for(10, 'request', self.hooks['no_response'])
 
     def action_terminate(self):
         if self.uid != -1 and self.nickname and self.server_ip:
             # Terminate packet
-            self.build_and_send_packet(self.server_ip, 'UDP', 'terminate', uid=self.uid)
+            self.build_and_send_packet(self.server_ip, 'terminate', uid=self.uid)
 
             # Variables à redéfinir comme avant la connexion
             self.uid = -1
@@ -149,6 +155,9 @@ class Client(MessagingBase):
                 'discovery': False,
                 'request': False
             }
+
+    def action_request_available_channels(self):
+        self.build_and_send_packet(self.server_ip, 'download', payload=0)
 
     #
     # HANDLERS
@@ -172,10 +181,21 @@ class Client(MessagingBase):
             # On a un ACK du serveur, le pseudo est accepté, on stocke notre UID
             self.answers['request'] = True
 
+            self.__call__('request_available_channels')
+
             self.uid = pkt[self.MessagingProtocol].uid
         elif subtype == 4:
             # On reçoit une Modify, le pseudo est déjà pris par quelqu'un
             raise NotImplementedError
+
+    def handler_data_transmission(self, pkt, subtype):
+        if subtype != 1:
+            return
+
+        packet_load = pkt[self.MessagingProtocol].load
+
+        self.available_convs = json.loads(self.bin_to_str(packet_load))
+        self.raise_or_call('init_channels_list')
 
     #
     # ALIASES

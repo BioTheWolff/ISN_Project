@@ -1,6 +1,7 @@
 from scapy.all import *
 from scapy.layers.inet import UDP, IP, TCP
 import socket as so
+from time import time as now_timestamp
 
 
 class MessagingBase:
@@ -23,10 +24,10 @@ class MessagingBase:
                              15: "terminate",
 
                              # Events
-                             20: "new_user",
-                             21: "new_channel",
-                             22: "user_left_channel",
-                             23: "user_joined_channel",
+                             20: "user_new",
+                             21: "channel_new",
+                             22: "user_left",
+                             23: "user_joined",
 
                              # Client-related
                              30: "update",
@@ -34,16 +35,41 @@ class MessagingBase:
                              32: "U_DNY",
 
                              # Data transmission
-                             33: "download",
-                             34: "response",
+                             40: "download",
+                             41: "response",
 
                              # Messages
-                             40: "message"
+                             50: "message"
                          }),
             IntField("uid", 0),  # User id
-            IntField("cid", 0),  # Conv id
+            IntField("cid", 0),  # Channel id
             StrField("load", "")
         ]
+
+    # Classe des salons
+    class Channel:
+        id = None
+        name = None
+        type = None
+        members = None
+        ciphered = None
+        messages = None
+
+        def __init__(self, cid, name, type_, members=None, ciphered=False):
+            self.id = cid
+            self.name = name
+            self.type = type_
+            self.members = members
+            self.ciphered = ciphered
+
+        def add_member(self, uid, ip):
+            self.members[uid] = ip
+
+        def remove_member(self, uid):
+            del self.members[uid]
+
+        def log_message(self, msg):
+            self.messages[now_timestamp()] = msg
 
     ip = so.gethostbyname(so.gethostname())
     port = 65012
@@ -58,27 +84,31 @@ class MessagingBase:
         15: "terminate",
 
         # Events
-        20: "new_user",
-        21: "new_channel",
-        22: "user_left_channel",
-        23: "user_joined_channel",
+        20: "user_new",
+        21: "channel_new",
+        22: "user_left",
+        23: "user_joined",
 
         # Client-related
         30: "update",
         31: "U_ACK",
-        32: "U_MOD",
+        32: "U_DNY",
 
         # Data transmission
-        33: "download",
-        34: "response",
+        40: "download",
+        41: "response",
 
         # Messages
-        40: "message"
+        50: "message"
     }
 
     handling_functions = None
     verbose = None
     hooks = None
+
+    @staticmethod
+    def bin_to_str(x):
+        return str(x)[2:-1]
 
     def bind_hook(self, name, func):
         if name not in self.hooks.keys():
@@ -86,29 +116,22 @@ class MessagingBase:
 
         self.hooks[name] = func
 
-    def build_and_send_packet(self, ip_dst, transport_type, mp_type, payload='', uid=0, tsp_flags=None):
+    def build_and_send_packet(self, ip_dst, mp_type, payload='', uid=0, cid=0):
         """
 
         :param ip_dst: l'IP du destinataire du paquet
-        :param transport_type: Le type de transport, soit UDP (rapidité) soit TCP (connexion de confiance)
         :param mp_type: Raccourci de MessagingProtocol type, soit le type de paquet à envoyer
         :param payload: Le payload éventuel du paquet MessagingProtocol
         :param uid: L'identifiant client
-        :param tsp_flags: Les flags éventuels du paquet TCP
+        :param cid: L'identifiant du salon
         :return:
         """
 
-        if transport_type not in ['UDP', 'TCP']:
-            raise Exception('Le type de paquet de la couche de transport doit être TCP ou UDP.')
-
         ip_pkt = IP(src=self.ip, dst=ip_dst)
 
-        if transport_type == 'TCP':
-            tsp_pkt = TCP(sport=self.port, dport=self.port, flags=tsp_flags)
-        else:
-            tsp_pkt = UDP(sport=self.port, dport=self.port)
+        tsp_pkt = UDP(sport=self.port, dport=self.port)
 
-        mp_pkt = self.MessagingProtocol(type=mp_type, load=payload, uid=uid)
+        mp_pkt = self.MessagingProtocol(type=mp_type, load=str(payload), uid=int(uid), cid=int(cid))
 
         final_pkt = ip_pkt / tsp_pkt / mp_pkt
 
@@ -130,7 +153,6 @@ class MessagingBase:
         if IP in pkt and UDP in pkt and pkt[UDP].sport == self.port and pkt[UDP].dport == self.port \
                 and self.MessagingProtocol in pkt:
             # The recieved packet concerns us
-            packet_load = pkt[self.MessagingProtocol].load
             packet_type, packet_subtype = [int(i) for i in str(pkt[self.MessagingProtocol].type)]
 
             if self.verbose:

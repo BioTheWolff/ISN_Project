@@ -28,6 +28,10 @@ def requested():
     terminate_button.pack()
 
 
+def list_channels():
+    pass
+
+
 def terminate():
     instance.close_session()
     status.config(text="Waiting...")
@@ -45,6 +49,7 @@ instance = Client()
 instance.bind_hook('no_response', test)
 instance.bind_hook('successful_discovery', discovered)
 instance.bind_hook('successful_request', requested)
+instance.bind_hook('init_channels_list', list_channels)
 
 status.pack()
 discovery_button.pack()
