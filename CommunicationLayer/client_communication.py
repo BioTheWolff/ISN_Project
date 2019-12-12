@@ -18,13 +18,14 @@ class Client(MessagingBase):
     server_ip = None
     sniffer = None
 
-    @staticmethod
-    def raise_or_call(hook):
+    def raise_or_call(self, hook):
         if type(hook) is Exception:
+            self.close_session()
             raise hook
         elif callable(hook):
             hook()
         else:
+            self.close_session()
             raise Exception("Hook not callable nor raisable.")
 
     def wait_for(self, secs, cond, final_raise):
@@ -75,14 +76,15 @@ class Client(MessagingBase):
         self.verbose = verbose
 
         self.handling_functions = {
-            1: lambda pkt, s: self.handler_connection_process(pkt, s)
+            1: lambda pkt, s: self.handler_connection_process(pkt, s),
+            4: lambda pkt, s: self.handler_data_transmission(pkt, s)
         }
 
         # On définit le sniffer
         self.sniffer = AsyncSniffer(prn=self.test_concern, filter="udp port 65012", store=False)
         self.sniffer.start()
 
-    def __call__(self, action, **kwargs):
+    def __call__(self, action, daemon=True, **kwargs):
         # On teste d'abord si un hook n'a pas été défini
         if None in self.hooks.values():
             pass
@@ -112,12 +114,12 @@ class Client(MessagingBase):
 
             thread = threading.Thread(target=Client.__dict__[f"action_{action}"],
                                       args=(self, *[kwargs[i] for i in params]),
-                                      daemon=True)
+                                      daemon=daemon)
         else:
             # Si l'action peut être appelée sans passer de paramètres
             thread = threading.Thread(target=Client.__dict__[f"action_{action}"],
                                       args=(self,),
-                                      daemon=True)
+                                      daemon=daemon)
 
         thread.start()
 
@@ -197,10 +199,10 @@ class Client(MessagingBase):
         packet_load = pkt[self.MessagingProtocol].load
 
         self.available_convs = json.loads(self.bin_to_str(packet_load))
-        self.raise_or_call('init_channels_list')
+        self.raise_or_call(self.hooks['init_channels_list'])
 
     #
     # ALIASES
     #
     def close_session(self):
-        self.__call__('terminate')
+        self.__call__('terminate', daemon=False)

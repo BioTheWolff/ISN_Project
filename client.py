@@ -4,11 +4,16 @@ from tkinter import *
 
 def test():
     status.config(text="No response from the server")
+    request_button.pack_forget()
+    channels_frame.pack_forget()
+    members_frame.pack_forget()
+    discovery_button.pack()
+
 
 
 def discover():
     status.config(text="Discovering")
-    instance('discovery')
+    comm_layer('discovery')
 
 
 def discovered():
@@ -19,21 +24,26 @@ def discovered():
 
 def request():
     status.config(text="Trying to connect")
-    instance('request', nickname='BioWolf')
+    comm_layer('request', nickname='BioWolf')
 
 
 def requested():
-    status.config(text=f"Connected with name {instance.nickname} (UID: {instance.uid})")
+    channels_frame.pack(side=LEFT)
+    members_frame.pack(side=RIGHT)
+
+    status.config(text=f"Connected with name {comm_layer.nickname} (UID: {comm_layer.uid})")
     request_button.pack_forget()
-    terminate_button.pack()
 
 
-def list_channels():
-    pass
+def init_render_channels():
+    chans = comm_layer.available_convs
+    for i in chans:
+        channels_list[i] = Label(channels_frame, text=chans[i])
+        channels_list[i].pack()
 
 
 def terminate():
-    instance.close_session()
+    comm_layer.close_session()
     status.config(text="Waiting...")
     terminate_button.pack_forget()
     discovery_button.pack()
@@ -41,19 +51,25 @@ def terminate():
 
 win = Tk()
 status = Label(text="Waiting...")
+
 discovery_button = Button(win, text='Discovery', command=discover)
 request_button = Button(win, text="Request for 'BioWolf'", command=request)
 terminate_button = Button(win, text="Close session", command=terminate)
 
-instance = Client()
-instance.bind_hook('no_response', test)
-instance.bind_hook('successful_discovery', discovered)
-instance.bind_hook('successful_request', requested)
-instance.bind_hook('init_channels_list', list_channels)
+channels_frame = Frame(bg='grey', height=600)
+channels_list = {}
+
+members_frame = Frame(bg='grey', height=600)
+
+comm_layer = Client()
+comm_layer.bind_hook('no_response', test)
+comm_layer.bind_hook('successful_discovery', discovered)
+comm_layer.bind_hook('successful_request', requested)
+comm_layer.bind_hook('init_channels_list', init_render_channels)
 
 status.pack()
 discovery_button.pack()
 
 win.mainloop()
 
-instance.close_session()
+comm_layer.close_session()

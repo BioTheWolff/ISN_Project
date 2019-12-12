@@ -26,7 +26,8 @@ class Server(MessagingBase):
 
         # Init
         self.convs = {
-            1: self.Channel(1, 'Test1', 'chan')
+            1: self.Channel(1, 'Test1'),
+            2: self.Channel(2, 'Test2')
         }
         self.clients = {}
         self.verbose = verbose

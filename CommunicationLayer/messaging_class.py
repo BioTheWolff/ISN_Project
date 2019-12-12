@@ -56,7 +56,7 @@ class MessagingBase:
         ciphered = None
         messages = None
 
-        def __init__(self, cid, name, type_, members=None, ciphered=False):
+        def __init__(self, cid, name, type_='chan', members=None, ciphered=False):
             self.id = cid
             self.name = name
             self.type = type_
