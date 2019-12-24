@@ -25,10 +25,10 @@ class MessagingBase:
                              15: "terminate",
 
                              # Events
-                             20: "user_new",
-                             21: "channel_new",
-                             22: "user_left",
-                             23: "user_joined",
+                             20: "channel_new",
+                             21: "channel_deleted",
+                             22: "user_joined",
+                             23: "user_left",
 
                              # Client-related
                              30: "update",
@@ -36,8 +36,11 @@ class MessagingBase:
                              32: "U_DNY",
 
                              # Data transmission
-                             40: "download",
-                             41: "response",
+                             40: "overview",
+                             41: "connect",
+                             42: "disconnect",
+                             43: "R_overview",
+                             44: "R_connect",
 
                              # Messages
                              50: "message"
@@ -49,25 +52,45 @@ class MessagingBase:
 
     # Classe des salons
     class Channel:
-        id = None
-        name = None
-        type = None
-        members = None
-        ciphered = None
         messages = None
 
         def __init__(self, cid, name, type_='chan', members=None, ciphered=False):
+            if members is None:
+                members = dict()
+
             self.id = cid
             self.name = name
             self.type = type_
             self.members = members
             self.ciphered = ciphered
 
-        def add_member(self, uid, ip):
-            self.members[uid] = ip
+        def __repr__(self):
+            members = ''
+            if self.members:
+                for member_id in self.members:
+                    members += f"  - {self.members[member_id]} (id: {member_id})\n"
+
+            return "--- Channel ---\n" \
+                   f"   id : {self.id}\n" \
+                   f" name : {self.name}\n" \
+                   f" type : {self.type}\n" \
+                   f" ---\n" \
+                   f" members:\n" \
+                   f" {members if self.members else 'this channel is empty'}"
+
+        def update_cipher(self, ciphered):
+            self.ciphered = ciphered
+
+        def add_member(self, uid, info):
+            self.members[uid] = info
 
         def remove_member(self, uid):
             del self.members[uid]
+
+        def update_members(self, members):
+            for uid in members:
+                if members[uid] is not None:
+                    self.members[uid] = members[uid]
 
         def log_message(self, msg):
             self.messages[now_timestamp()] = msg
@@ -85,10 +108,10 @@ class MessagingBase:
         15: "terminate",
 
         # Events
-        20: "user_new",
-        21: "channel_new",
-        22: "user_left",
-        23: "user_joined",
+        20: "channel_new",
+        21: "channel_deleted",
+        22: "user_joined",
+        23: "user_left",
 
         # Client-related
         30: "update",
@@ -96,8 +119,11 @@ class MessagingBase:
         32: "U_DNY",
 
         # Data transmission
-        40: "download",
-        41: "response",
+        40: "overview",
+        41: "connect",
+        42: "disconnect",
+        43: "R_overview",
+        44: "R_connect",
 
         # Messages
         50: "message"

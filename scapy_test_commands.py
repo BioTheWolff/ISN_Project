@@ -18,10 +18,10 @@ packet_types = {
         15: "terminate",
 
         # Events
-        20: "user_new",
-        21: "channel_new",
-        22: "user_left",
-        23: "user_joined",
+        20: "channel_new",
+        21: "channel_deleted",
+        22: "user_joined",
+        23: "user_left",
 
         # Client-related
         30: "update",
@@ -29,8 +29,11 @@ packet_types = {
         32: "U_DNY",
 
         # Data transmission
-        40: "download",
-        41: "response",
+        40: "overview",
+        41: "connect",
+        42: "disconnect",
+        43: "R_overview",
+        44: "R_connect",
 
         # Messages
         50: "message"
@@ -51,10 +54,10 @@ class MessagingProtocol(Packet):
                          15: "terminate",
 
                          # Events
-                         20: "user_new",
-                         21: "channel_new",
-                         22: "user_left",
-                         23: "user_joined",
+                         20: "channel_new",
+                         21: "channel_deleted",
+                         22: "user_joined",
+                         23: "user_left",
 
                          # Client-related
                          30: "update",
@@ -62,8 +65,11 @@ class MessagingProtocol(Packet):
                          32: "U_DNY",
 
                          # Data transmission
-                         40: "download",
-                         41: "response",
+                         40: "overview",
+                         41: "connect",
+                         42: "disconnect",
+                         43: "R_overview",
+                         44: "R_connect",
 
                          # Messages
                          50: "message"
@@ -114,6 +120,10 @@ def mp(type_, load='', u=0):
 
 def dpkt():
     send(netw() / mp(99))
+
+
+def term(uid):
+    send(netw() / mp(15, u=uid))
 
 
 if __name__ == "__main__":
