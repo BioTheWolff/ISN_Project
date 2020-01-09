@@ -54,7 +54,7 @@ class MessagingBase:
     class Channel:
         messages = None
 
-        def __init__(self, cid, name, type_='chan', members=None, ciphered=False):
+        def __init__(self, cid: int, name: str, type_='chan', members=None, ciphered=False) -> None:
             if members is None:
                 members = dict()
 
@@ -64,7 +64,7 @@ class MessagingBase:
             self.members = members
             self.ciphered = ciphered
 
-        def __repr__(self):
+        def __repr__(self) -> str:
             members = ''
             if self.members:
                 for member_id in self.members:
@@ -78,22 +78,25 @@ class MessagingBase:
                    f" members:\n" \
                    f" {members if self.members else 'this channel is empty'}"
 
-        def update_cipher(self, ciphered):
+        def update_cipher(self, ciphered: bool) -> None:
             self.ciphered = ciphered
 
-        def add_member(self, uid, info):
+        def add_member(self, uid: int, info) -> None:
             self.members[uid] = info
 
-        def remove_member(self, uid):
+        def remove_member(self, uid: int) -> None:
             del self.members[uid]
 
-        def update_members(self, members):
+        def update_members(self, members: dict) -> None:
             for uid in members:
                 if members[uid] is not None:
                     self.members[uid] = members[uid]
 
-        def log_message(self, msg):
+        def server_log_message(self, msg: str) -> None:
             self.messages[now_timestamp()] = msg
+
+        def client_log_message(self, msg: dict) -> None:
+            self.messages[msg['timestamp']] = msg['content']
 
     ip = so.gethostbyname(so.gethostname())
     port = 65012
@@ -134,7 +137,7 @@ class MessagingBase:
     hooks = None
 
     @staticmethod
-    def resolve_broadcast_address():
+    def resolve_broadcast_address() -> str:
         for _, interface in enumerate(netifaces.interfaces()):
             i = netifaces.ifaddresses(interface)
 
@@ -143,24 +146,24 @@ class MessagingBase:
                     return i[netifaces.AF_INET][0]['broadcast']
 
     @staticmethod
-    def bin_to_str(x):
+    def bin_to_str(x: str) -> str:
         return str(x)[2:-1]
 
-    def bind_hook(self, name, func):
+    def bind_hook(self, name: str, func: callable) -> None:
         if name not in self.hooks.keys():
             return
 
         self.hooks[name] = func
 
-    def build_and_send_packet(self, ip_dst, mp_type, payload='', uid=0, cid=0):
+    def build_and_send_packet(self, ip_dst: str, mp_type: int, payload: str = '', uid: int = 0, cid: int = 0) \
+            -> None:
         """
 
-        :param ip_dst: l'IP du destinataire du paquet
-        :param mp_type: Raccourci de MessagingProtocol type, soit le type de paquet à envoyer
-        :param payload: Le payload éventuel du paquet MessagingProtocol
-        :param uid: L'identifiant client
-        :param cid: L'identifiant du salon
-        :return:
+        :param ip_dst: packet's recipient ip
+        :param mp_type: MessagingProtocol type
+        :param payload: MessagingProtocol payload
+        :param uid: User identifier
+        :param cid: Channel identifier
         """
 
         ip_pkt = IP(src=self.ip, dst=ip_dst)
@@ -173,7 +176,7 @@ class MessagingBase:
 
         send(final_pkt, verbose=False)
 
-    def test_concern(self, pkt):
+    def test_concern(self, pkt: Packet) -> None:
         """
             Cette fonction regarde les couches du paquet pour vérifier qu'il contient bien les choses requises:
             un protocole IP, un protocole UDP ports entrant et sortant numéro 65012, et la classe de paquet
@@ -181,7 +184,6 @@ class MessagingBase:
             correspondante pour un handling plus approfondi (et découpé en plusieurs fonctions pour la lisibilité)
 
         :param pkt: Paquet sniffé par Scapy
-        :return: Aucun return, on fait un appel de la fonction correspondante au type reçu
         """
 
         # Packet is of form:
@@ -200,7 +202,7 @@ class MessagingBase:
             # On passe au handler concerné qui saura s'en occuper
             self.handling_functions[packet_type](pkt, packet_subtype)
 
-    def bind_layers_to_protocol(self):
+    def bind_layers_to_protocol(self) -> None:
         """
             Bind UDP
             Les paquets UDP sont utilisés pour le discovery process
