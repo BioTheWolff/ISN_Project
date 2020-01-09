@@ -3,6 +3,7 @@ from scapy.layers.inet import UDP, IP, TCP
 import socket as so
 from time import time as now_timestamp
 import netifaces
+from typing import Union, Any
 
 
 class MessagingBase:
@@ -155,8 +156,8 @@ class MessagingBase:
 
         self.hooks[name] = func
 
-    def build_and_send_packet(self, ip_dst: str, mp_type: int, payload: str = '', uid: int = 0, cid: int = 0) \
-            -> None:
+    def build_and_send_packet(self, ip_dst: str, mp_type: Union[int, str], payload: Any = '', uid: int = 0,
+                              cid: int = 0) -> None:
         """
 
         :param ip_dst: packet's recipient ip

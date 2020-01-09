@@ -2,6 +2,7 @@ from scapy.all import *
 from scapy.layers.inet import IP
 from .messaging_class import MessagingBase
 import json
+from typing import Union
 
 
 class Server(MessagingBase):
@@ -19,7 +20,7 @@ class Server(MessagingBase):
     #
     # DUNDERS
     #
-    def __init__(self, verbose=None):
+    def __init__(self, verbose=None) -> None:
         self.bind_layers_to_protocol()
 
         self.broadcast_addr = self.resolve_broadcast_address()
@@ -55,7 +56,7 @@ class Server(MessagingBase):
             'message': None
         }
 
-    def __call__(self):
+    def __call__(self) -> None:
         if self.verbose:
             print("starting to listen")
 
@@ -64,7 +65,7 @@ class Server(MessagingBase):
     #
     # EXECUTERS
     #
-    def tell_members_of_channel(self, cid, event_type, load=''):
+    def tell_members_of_channel(self, cid: int, event_type: Union[str, int], load: str = '') -> None:
 
         members = self.convs[cid].members
 
@@ -79,7 +80,7 @@ class Server(MessagingBase):
     #
     # HANDLERS
     #
-    def handler_connection_process(self, pkt, subtype):
+    def handler_connection_process(self, pkt: Packet, subtype: int):
         """
 
         :param pkt: Paquet reçu
@@ -130,7 +131,7 @@ class Server(MessagingBase):
 
                     self.tell_members_of_channel(id_, 'user_left', load=uid)
 
-    def handler_data_transmission(self, pkt, subtype):
+    def handler_data_transmission(self, pkt: Packet, subtype: int):
         if subtype == 3:
             return
 
@@ -171,4 +172,3 @@ class Server(MessagingBase):
             dumped_details = json.dumps(details)
 
             self.build_and_send_packet(ip_dst, 'R_connect', uid=uid_dst, cid=pkt_cid, payload=dumped_details)
-

@@ -4,6 +4,7 @@ from .messaging_class import MessagingBase
 import threading
 from time import sleep
 import json
+from typing import Optional
 
 
 class Client(MessagingBase):
@@ -19,7 +20,7 @@ class Client(MessagingBase):
     server_ip = None
     sniffer = None
 
-    def raise_or_call(self, hook):
+    def raise_or_call(self, hook) -> None:
         if type(hook) is Exception:
             self.close_session()
             raise hook
@@ -29,7 +30,7 @@ class Client(MessagingBase):
             self.close_session()
             raise Exception("Hook not callable nor raisable.")
 
-    def wait_for(self, secs, cond, final_raise):
+    def wait_for(self, secs: int, cond: str, final_raise) -> None:
         for i in range(secs):
             if self.answers[cond]:
                 break
@@ -43,7 +44,7 @@ class Client(MessagingBase):
     #
     # DUNDERS
     #
-    def __init__(self, verbose=False):
+    def __init__(self, verbose=False) -> None:
         self.bind_layers_to_protocol()
 
         self.broadcast_addr = self.resolve_broadcast_address()
@@ -88,7 +89,7 @@ class Client(MessagingBase):
         self.sniffer = AsyncSniffer(prn=self.test_concern, filter="udp port 65012", store=False)
         self.sniffer.start()
 
-    def __call__(self, action, daemon=True, **kwargs):
+    def __call__(self, action, daemon=True, **kwargs) -> None:
         # On teste d'abord si un hook n'a pas été défini
         if None in self.hooks.values():
             pass
@@ -131,7 +132,7 @@ class Client(MessagingBase):
     #
     # ACTIONS
     #
-    def action_discovery(self):
+    def action_discovery(self) -> None:
         if self.verbose:
             print("sending discovery packet")
 
@@ -140,7 +141,7 @@ class Client(MessagingBase):
 
         self.wait_for(10, 'discovery', self.hooks['no_response'])
 
-    def action_request(self, nickname):
+    def action_request(self, nickname: str) -> Optional[bool]:
 
         if not nickname:
             return False
@@ -151,7 +152,7 @@ class Client(MessagingBase):
 
         self.wait_for(10, 'request', self.hooks['no_response'])
 
-    def action_terminate(self):
+    def action_terminate(self) -> None:
         if self.uid != -1 and self.nickname and self.server_ip:
             # Terminate packet
             self.build_and_send_packet(self.server_ip, 'terminate', uid=self.uid)
@@ -166,16 +167,16 @@ class Client(MessagingBase):
                 'request': False
             }
 
-    def action_request_available_channels(self):
+    def action_request_available_channels(self) -> None:
         self.build_and_send_packet(self.server_ip, 'overview', uid=self.uid)
 
-    def action_join_channel(self, cid):
+    def action_join_channel(self, cid: int) -> None:
         self.build_and_send_packet(self.server_ip, 'connect', cid=cid, uid=self.uid)
 
     #
     # HANDLERS
     #
-    def handler_connection_process(self, pkt, subtype):
+    def handler_connection_process(self, pkt: Packet, subtype: int) -> Optional[NotImplementedError]:
         """
 
         :param pkt: Paquet reçu
@@ -209,7 +210,7 @@ class Client(MessagingBase):
             # On reçoit une Modify, le pseudo est déjà pris par quelqu'un
             raise NotImplementedError
 
-    def handler_channel_events(self, pkt, subtype):
+    def handler_channel_events(self, pkt: Packet, subtype: int) -> None:
         uid = pkt[self.MessagingProtocol].uid
 
         if self.uid != uid:
@@ -231,7 +232,7 @@ class Client(MessagingBase):
             channel = self.convs[cid]
             channel.remove_member(str(pkt_load))
 
-    def handler_data_transmission(self, pkt, subtype):
+    def handler_data_transmission(self, pkt: Packet, subtype: int) -> None:
         uid = pkt[self.MessagingProtocol].uid
 
         if self.uid != uid:
@@ -263,5 +264,5 @@ class Client(MessagingBase):
     #
     # ALIASES
     #
-    def close_session(self):
+    def close_session(self) -> None:
         self.__call__('terminate', daemon=False)
