@@ -139,6 +139,14 @@ class MessagingBase:
 
     @staticmethod
     def resolve_broadcast_address() -> str:
+        """
+        Fonction compliquée que je me dérangerai pas pour expliquer en détails.
+        Ce qu'il faut comprendre, c'est qu'elle renvoie l'adresse de broadcast du réseau où le client qui lance le
+        fichier est connecté
+
+        :return:
+        """
+
         for _, interface in enumerate(netifaces.interfaces()):
             i = netifaces.ifaddresses(interface)
 
@@ -147,10 +155,26 @@ class MessagingBase:
                     return i[netifaces.AF_INET][0]['broadcast']
 
     @staticmethod
-    def bin_to_str(x: str) -> str:
+    def bin_to_str(x: bytes) -> str:
+        """
+        Transforme un bytes en string
+
+        :param x: la chaîne en bytes
+        :return: str
+        """
+
         return str(x)[2:-1]
 
     def bind_hook(self, name: str, func: callable) -> None:
+        """
+        Accroche le hook demandé avec la fonction associée
+        Utilisé seulement pour le client
+
+        :param name:
+        :param func:
+        :return:
+        """
+
         if name not in self.hooks.keys():
             return
 
@@ -159,6 +183,7 @@ class MessagingBase:
     def build_and_send_packet(self, ip_dst: str, mp_type: Union[int, str], payload: Any = '', uid: int = 0,
                               cid: int = 0) -> None:
         """
+        Construit et envoie le paquet Scapy
 
         :param ip_dst: packet's recipient ip
         :param mp_type: MessagingProtocol type
@@ -179,10 +204,12 @@ class MessagingBase:
 
     def test_concern(self, pkt: Packet) -> None:
         """
-            Cette fonction regarde les couches du paquet pour vérifier qu'il contient bien les choses requises:
-            un protocole IP, un protocole UDP ports entrant et sortant numéro 65012, et la classe de paquet
-            que nous avons créée un peu plus haut. Si ces tests passent, la fonction va appeler la classe/fonction
-            correspondante pour un handling plus approfondi (et découpé en plusieurs fonctions pour la lisibilité)
+        Cette fonction regarde les couches du paquet pour vérifier qu'il contient bien les choses requises:
+        - une couche de réseau en IP
+        - une couche de transport en UDP avec ports entrat/sortant portant le numéro 65012
+        - une couche d'application instance de la classe MessagingProtocol créée ci-dessus
+
+        Cette fonction transmet ensuite aux fonctions nommées handler_* selon le type du paquet qu'elle reçoit
 
         :param pkt: Paquet sniffé par Scapy
         """
@@ -205,17 +232,18 @@ class MessagingBase:
 
     def bind_layers_to_protocol(self) -> None:
         """
-            Bind UDP
-            Les paquets UDP sont utilisés pour le discovery process
-            Pour le discovery process, se référer à
-            https://en.wikipedia.org/wiki/Dynamic_Host_Configuration_Protocol#Operation
-            Les étapes Discovery (client), Offer (serveur), Request (client) et Acknowledge (serveur)
-            se déroulent par UDP, car on préfèrera la rapidité des paquets UDP à la conservation des TCP
+        Bind UDP
+        Les paquets UDP sont utilisés pour le discovery process
+        Pour le discovery process, se référer à
+        https://en.wikipedia.org/wiki/Dynamic_Host_Configuration_Protocol#Operation
+        Les étapes Discovery (client), Offer (serveur), Request (client) et Acknowledge (serveur)
+        se déroulent par UDP, car on préfèrera la rapidité des paquets UDP à la conservation des TCP
         """
         bind_layers(UDP, self.MessagingProtocol, sport=self.port)
         bind_layers(UDP, self.MessagingProtocol, dport=self.port)
 
         # Bind TCP
         # Les paquets TCP seront utilisés pour toutes transmissions ultérieures au discovery
+        # A VENIR, pour le moment tout se passe en UDP (raison de simplicité quant au référencement des numéros SYN)
         bind_layers(TCP, self.MessagingProtocol, sport=self.port)
         bind_layers(TCP, self.MessagingProtocol, dport=self.port)
