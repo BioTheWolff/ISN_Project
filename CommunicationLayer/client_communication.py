@@ -64,6 +64,7 @@ class Client(MessagingBase):
         }
         self.hooks = {
             'no_response': None,
+            'modify_request': None,
 
             'successful_discovery': None,
             'successful_request': None,
@@ -208,7 +209,7 @@ class Client(MessagingBase):
 
         elif subtype == 4:
             # On reçoit une Modify, le pseudo est déjà pris par quelqu'un
-            raise NotImplementedError
+            self.raise_or_call(self.hooks["modify_request"])
 
     def handler_channel_events(self, pkt: Packet, subtype: int) -> None:
         uid = pkt[self.MessagingProtocol].uid
@@ -238,27 +239,37 @@ class Client(MessagingBase):
         if self.uid != uid:
             return
 
+        # On ignore les packets envoyés par les clients
         if subtype < 3:
             return
 
         packet_load = pkt[self.MessagingProtocol].load
 
         if subtype == 3:
+            # On reçoit les salons disponibles
             if not self.answers['overview']:
+                # KNOWN BUG: le client peut recevoir plusieurs fois l'overview si plusieurs clients
+                # sont connectés (source inconnue, peut être Scapy?) donc on patch ça avec une variable
+                # booléenne mise à true lorsqu'on reçoit l'overview la première fois
                 self.available_convs = json.loads(self.bin_to_str(packet_load))
                 self.raise_or_call(self.hooks['init_channels_list'])
                 self.answers['overview'] = True
         elif subtype == 4:
+            # Connexion acceptée par le serveur à un salon
+
+            # On récupère l'identifiant du salon et les détails envoyés en JSON
             pkt_cid = pkt[self.MessagingProtocol].cid
             load = self.bin_to_str(pkt[self.MessagingProtocol].load)
             load = json.loads(load)
 
+            # On construit le salon
             name = self.available_convs[str(pkt_cid)]
             channel = self.Channel(pkt_cid, name)
 
             channel.update_cipher(load['ciphered'])
             channel.update_members(load['members'])
 
+            # On stocke l'objet de salon dans la liste
             self.convs[pkt_cid] = channel
 
     #

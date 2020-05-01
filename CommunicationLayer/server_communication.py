@@ -6,16 +6,19 @@ from typing import Union
 
 
 class Server(MessagingBase):
-    convs = None
+    convs: dict = None
 
     # Les clients sont sous la forme id => IP
-    clients = None
+    clients: dict = None
     temporary_ids = None
 
-    usernames = None
-    last_uid = None
-    last_tid = None
-    last_cid = None
+    usernames: dict = None
+    # User ID
+    last_uid: int = None
+    # Temporary ID
+    last_tid: int = None
+    # Channel ID
+    last_cid: int = None
 
     #
     # DUNDERS
@@ -41,19 +44,10 @@ class Server(MessagingBase):
         self.handling_functions = {
             # Discovery type
             1: lambda pkt, s: self.handler_connection_process(pkt, s),
+            # Events (pour les clients)
             2: lambda *_: None,
+            # Data
             4: lambda pkt, s: self.handler_data_transmission(pkt, s),
-
-            9: lambda *_: print(self.clients, '\n', self.usernames)
-        }
-
-        self.hooks = {
-            'no_response': None,
-            'client_connected': None,
-            'client_departed': None,
-            'channel_created': None,
-            'channel_deleted': None,
-            'message': None
         }
 
     def __call__(self) -> None:
@@ -66,6 +60,19 @@ class Server(MessagingBase):
     # EXECUTERS
     #
     def tell_members_of_channel(self, cid: int, event_type: Union[str, int], load: str = '') -> None:
+        """
+        Envoie un évènement à tous les membres du salon
+
+        Utilisé pour:
+        - 22: User joined
+        - 23: User left
+        - 50: Message
+
+        :param cid: ID du salon
+        :param event_type: Type d'évènement
+        :param load: les informations du nouveau membre, l'identifiant d'un membre déconnecté ou un message
+        :return:
+        """
 
         members = self.convs[cid].members
 
@@ -82,6 +89,11 @@ class Server(MessagingBase):
     #
     def handler_connection_process(self, pkt: Packet, subtype: int):
         """
+        Fonction prenant en charge les processus de connexion.
+
+        Subtype 0: Discovery du serveur par un client
+        Subtype 2: Request d'une connexion par le client, qui fournit un nom d'utilisateur
+        Subtype 5: Termination (déconnexion) d'un client
 
         :param pkt: Paquet reçu
         :param subtype: Sous-type du processus de discovery
@@ -124,6 +136,7 @@ class Server(MessagingBase):
             self.clients[uid] = None
             self.usernames[uid] = None
 
+            # On déconnecte automatiquement le client de tous les salons
             for id_ in self.convs:
                 chan = self.convs[id_]
                 if chan.members and uid in chan.members:
@@ -132,6 +145,18 @@ class Server(MessagingBase):
                     self.tell_members_of_channel(id_, 'user_left', load=uid)
 
     def handler_data_transmission(self, pkt: Packet, subtype: int):
+        """
+        Handler des données (demandes diverses)
+
+        40: Overview (liste des salons)
+        41: Connect (un membre demande la connexion à un salon)
+        42: Disconnect (un membre se déconnecte d'un salon)
+
+        :param pkt: Paquet reçu
+        :param subtype: Sous type de donnée
+        :return:
+        """
+
         if subtype == 3:
             return
 

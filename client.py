@@ -75,6 +75,8 @@ members_frame = Frame(bg='darkgrey', height=600, width=200)
 
 comm_layer = Client(verbose=True)
 comm_layer.bind_hook('no_response', test)
+
+
 comm_layer.bind_hook('successful_discovery', discovered)
 comm_layer.bind_hook('successful_request', requested)
 comm_layer.bind_hook('init_channels_list', init_render_channels)
