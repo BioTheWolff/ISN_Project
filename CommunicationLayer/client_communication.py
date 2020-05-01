@@ -21,6 +21,13 @@ class Client(MessagingBase):
     sniffer = None
 
     def raise_or_call(self, hook) -> None:
+        """
+        Prend le hook et regarde si il est callable, raisable ou aucun des deux
+
+        :param hook: Le hook à appeler/jeter
+        :return:
+        """
+
         if type(hook) is Exception:
             self.close_session()
             raise hook
@@ -31,6 +38,16 @@ class Client(MessagingBase):
             raise Exception("Hook not callable nor raisable.")
 
     def wait_for(self, secs: int, cond: str, final_raise) -> None:
+        """
+        Vérifie chaque seconde que la condition est remplie, et sinon à la fin du temps donné,
+        lève une erreur (param final_raise)
+
+        :param secs: secondes
+        :param cond: condition de vérification avant de trigger la final_raise
+        :param final_raise: généralement une erreur si la condition n'est pas remplie
+        :return:
+        """
+
         for i in range(secs):
             if self.answers[cond]:
                 break
@@ -82,7 +99,7 @@ class Client(MessagingBase):
 
         self.handling_functions = {
             1: lambda pkt, s: self.handler_connection_process(pkt, s),
-            2: lambda pkt, s: self.handler_channel_events(pkt, s),
+            2: lambda pkt, s: self.handler_events(pkt, s),
             4: lambda pkt, s: self.handler_data_transmission(pkt, s)
         }
 
@@ -134,6 +151,13 @@ class Client(MessagingBase):
     # ACTIONS
     #
     def action_discovery(self) -> None:
+        """
+        Processus de discovery
+        Cherche le serveur sur le réseau local
+
+        :return:
+        """
+
         if self.verbose:
             print("sending discovery packet")
 
@@ -143,6 +167,13 @@ class Client(MessagingBase):
         self.wait_for(10, 'discovery', self.hooks['no_response'])
 
     def action_request(self, nickname: str) -> Optional[bool]:
+        """
+        Envoie une requête de connexion au serveur trouvé par la discovery
+        Joint un pseudo et attend une réponse
+
+        :param nickname: Pseudo du client
+        :return:
+        """
 
         if not nickname:
             return False
@@ -154,6 +185,11 @@ class Client(MessagingBase):
         self.wait_for(10, 'request', self.hooks['no_response'])
 
     def action_terminate(self) -> None:
+        """
+        Envoie un message de termination (Terminate) au serveur si on est connecté
+        :return:
+        """
+
         if self.uid != -1 and self.nickname and self.server_ip:
             # Terminate packet
             self.build_and_send_packet(self.server_ip, 'terminate', uid=self.uid)
@@ -169,9 +205,18 @@ class Client(MessagingBase):
             }
 
     def action_request_available_channels(self) -> None:
+        """
+        Demande tous les salons du système de messagerie au serveur
+        :return:
+        """
         self.build_and_send_packet(self.server_ip, 'overview', uid=self.uid)
 
     def action_join_channel(self, cid: int) -> None:
+        """
+        Demande au serveur pour rejoindre un salon
+        :param cid: ID du salon (les IDs sont récupérés par l'Overview)
+        :return:
+        """
         self.build_and_send_packet(self.server_ip, 'connect', cid=cid, uid=self.uid)
 
     #
@@ -179,6 +224,12 @@ class Client(MessagingBase):
     #
     def handler_connection_process(self, pkt: Packet, subtype: int) -> Optional[NotImplementedError]:
         """
+        Handler du processus de connexion
+
+        Sous-types:
+        - 0: Discovery (le serveur signale qu'il est présent)
+        - 3: R_ACK (le serveur renvoie une Request_ACKnowledge: le pseudo est accepté et le client est connecté)
+        - 4: R_MOD (renvoie une Request_MODify: le pseudo est déjà pris ou refusé)
 
         :param pkt: Paquet reçu
         :param subtype: Sous-type du processus de discovery
@@ -211,7 +262,21 @@ class Client(MessagingBase):
             # On reçoit une Modify, le pseudo est déjà pris par quelqu'un
             self.raise_or_call(self.hooks["modify_request"])
 
-    def handler_channel_events(self, pkt: Packet, subtype: int) -> None:
+    def handler_events(self, pkt: Packet, subtype: int) -> None:
+        """
+        Handler des évènements
+
+        Sous-types:
+        - 0: channel_new (un salon a été créé)
+        - 1: channel_deleted (un salon a été supprimé)
+        - 2: user_joined (un utilisateur a rejoint un salon dont on précisera l'ID)
+        - 3: user_left (un utilisateur a quitté un salon, dont on précisera l'ID)
+
+        :param pkt: le paquet reçu
+        :param subtype: le sous type
+        :return:
+        """
+
         uid = pkt[self.MessagingProtocol].uid
 
         if self.uid != uid:
@@ -234,6 +299,18 @@ class Client(MessagingBase):
             channel.remove_member(str(pkt_load))
 
     def handler_data_transmission(self, pkt: Packet, subtype: int) -> None:
+        """
+        Handler des données (requêtes diverses) transmises
+
+        Sous-types concernés:
+        - 3: R_overview (le serveur répond à notre demande d'overview avec la liste des salons)
+        - 4: R_connect (le serveur répond à notre demande de connexion)
+
+        :param pkt:
+        :param subtype:
+        :return:
+        """
+
         uid = pkt[self.MessagingProtocol].uid
 
         if self.uid != uid:
