@@ -17,6 +17,9 @@ class Client(MessagingBase):
     convs = None
     available_convs = None
 
+    current_conv = None
+    current_conv_messages = None
+
     server_ip = None
     sniffer = None
 
@@ -69,10 +72,11 @@ class Client(MessagingBase):
         # Init
         self.uid = -1
         self.tid = -1
-        self.convs = {}
         self.available_convs = {}
         self.server_ip = ''
         self.nickname = ''
+        self.current_conv = -1
+        self.current_conv_messages = []
 
         self.answers = {
             'discovery': False,
@@ -100,7 +104,8 @@ class Client(MessagingBase):
         self.handling_functions = {
             1: lambda pkt, s: self.handler_connection_process(pkt, s),
             2: lambda pkt, s: self.handler_events(pkt, s),
-            4: lambda pkt, s: self.handler_data_transmission(pkt, s)
+            4: lambda pkt, s: self.handler_data_transmission(pkt, s),
+            5: lambda pkt, _: self.handler_messages(pkt)
         }
 
         # On définit le sniffer
@@ -120,7 +125,8 @@ class Client(MessagingBase):
             'request_available_channels': None,
 
             'request': ['nickname'],
-            'join_channel': ['cid']
+            'join_channel': ['cid'],
+            'send_message': ['message']
         }
 
         # On vérifie que l'action existe bien
@@ -218,6 +224,9 @@ class Client(MessagingBase):
         :return:
         """
         self.build_and_send_packet(self.server_ip, 'connect', cid=cid, uid=self.uid)
+
+    def action_send_message(self, message: str) -> None:
+        self.build_and_send_packet(self.server_ip, 'message', cid=self.current_conv, uid=self.uid, payload=message)
 
     #
     # HANDLERS
@@ -348,6 +357,20 @@ class Client(MessagingBase):
 
             # On stocke l'objet de salon dans la liste
             self.convs[pkt_cid] = channel
+
+    def handler_messages(self, pkt: Packet):
+        payload = pkt[self.MessagingProtocol].load
+        cid = pkt[self.MessagingProtocol].cid
+        uid = pkt[self.MessagingProtocol].uid
+
+        if uid != self.uid:
+            return
+
+        decompiled = json.loads(self.bin_to_str(payload))
+
+        self.current_conv_messages.append(decompiled)
+
+        print(self.current_conv_messages)
 
     #
     # ALIASES
