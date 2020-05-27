@@ -49,7 +49,7 @@ class Server(MessagingBase):
             # Data
             4: lambda pkt, s: self.handler_data_transmission(pkt, s),
             # Messages
-            5: lambda pkt, _: self.handler_messages(pkt)
+            5: lambda pkt, s: self.handler_messages(pkt, s)
         }
 
     def __call__(self) -> None:
@@ -200,11 +200,17 @@ class Server(MessagingBase):
 
             self.build_and_send_packet(ip_dst, 'R_connect', uid=uid_dst, cid=pkt_cid, payload=dumped_details)
 
-    def handler_messages(self, pkt: Packet):
+    def handler_messages(self, pkt: Packet, subtype: int):
+
+        if subtype != 0:
+            return
+
         payload = pkt[self.MessagingProtocol].load
         cid = pkt[self.MessagingProtocol].cid
         uid = pkt[self.MessagingProtocol].uid
 
+        print(self.usernames[uid], payload)
+
         compiled = json.dumps({'sender_id': uid, 'content': self.bin_to_str(payload)})
 
-        self.tell_members_of_channel(cid, "message", compiled)
+        self.tell_members_of_channel(cid, "M_RECV", compiled)

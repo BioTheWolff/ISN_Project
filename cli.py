@@ -7,7 +7,7 @@ win.geometry("500x500")
 win.configure(bg="darkgrey")
 
 # Comm layer init
-comm_layer = Client()
+comm_layer = Client(verbose=True)
 # comm_layer(ACTION, **params)
 # ACTIONs: 'discovery', 'request' (param: nickname), 'terminate'
 
@@ -44,11 +44,32 @@ def on_modify_request():
 
 
 def main_frame():
-    global state
+    global state, channels_list
+
+    for i in channels_list:
+        channels_list[i].pack_forget()
 
     state = "main"
     entry.place(anchor=CENTER, relx=0.4, rely=0.5)
     send_button.place(anchor=CENTER, relx=0.7, rely=0.5)
+
+
+def channel_choice():
+    global channels_list
+
+    login_label.pack_forget()
+    login_button.pack_forget()
+    entry.pack_forget()
+    entry.delete(0, 'end')
+
+    chans = comm_layer.available_convs
+    for i in chans:
+        channels_list[i] = Button(win, text=chans[i], command=lambda: join_chan_id(i))
+        channels_list[i].pack()
+
+
+def join_chan_id(cid):
+    comm_layer('join_channel', cid=cid)
 
 
 def send_message():
@@ -64,13 +85,17 @@ entry = Entry(win, width=50)
 send_button = Button(win, command=send_message)
 
 discovery_button = Button(win, text="Chercher un serveur", command=lambda: comm_layer('discovery'))
-login_button = Button(win, text="Se connecter", command=comm_layer('request', nickname=entry.get()))
+login_button = Button(win, text="Se connecter", command=lambda: comm_layer('request', nickname=entry.get()))
+
+channels_list = {}
 
 # Hooks binds
 comm_layer.bind_hook("no_response", main_menu_no_response)
 comm_layer.bind_hook("successful_discovery", discovered)
 comm_layer.bind_hook("modify_request", on_modify_request)
-comm_layer.bind_hook("successful_request", main_frame)
+comm_layer.bind_hook("successful_request", lambda: None)
+comm_layer.bind_hook("init_channels_list", channel_choice)
+comm_layer.bind_hook("connected", main_frame)
 
 discovery_button.pack()
 

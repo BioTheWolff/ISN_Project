@@ -44,7 +44,8 @@ class MessagingBase:
                              44: "R_connect",
 
                              # Messages
-                             50: "message"
+                             50: "M_SEND",
+                             51: "M_RECV"
                          }),
             IntField("uid", 0),  # User id
             IntField("cid", 0),  # Channel id
@@ -130,7 +131,8 @@ class MessagingBase:
         44: "R_connect",
 
         # Messages
-        50: "message"
+        50: "M_SEND",
+        51: "M_RECV"
     }
 
     handling_functions = None

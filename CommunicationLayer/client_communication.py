@@ -18,6 +18,7 @@ class Client(MessagingBase):
     available_convs = None
 
     current_conv = None
+    current_cid = None
     current_conv_messages = None
 
     server_ip = None
@@ -75,7 +76,7 @@ class Client(MessagingBase):
         self.available_convs = {}
         self.server_ip = ''
         self.nickname = ''
-        self.current_conv = -1
+        self.current_cid = -1
         self.current_conv_messages = []
 
         self.answers = {
@@ -91,6 +92,7 @@ class Client(MessagingBase):
             'successful_request': None,
 
             'init_channels_list': None,
+            'connected': None,
 
             'client_connected': None,
             'client_departed': None,
@@ -105,7 +107,7 @@ class Client(MessagingBase):
             1: lambda pkt, s: self.handler_connection_process(pkt, s),
             2: lambda pkt, s: self.handler_events(pkt, s),
             4: lambda pkt, s: self.handler_data_transmission(pkt, s),
-            5: lambda pkt, _: self.handler_messages(pkt)
+            5: lambda pkt, s: self.handler_messages(pkt, s)
         }
 
         # On définit le sniffer
@@ -181,6 +183,9 @@ class Client(MessagingBase):
         :return:
         """
 
+        if self.verbose:
+            print("sending request packet")
+
         if not nickname:
             return False
 
@@ -195,6 +200,9 @@ class Client(MessagingBase):
         Envoie un message de termination (Terminate) au serveur si on est connecté
         :return:
         """
+
+        if self.verbose:
+            print("sending terminate packet")
 
         if self.uid != -1 and self.nickname and self.server_ip:
             # Terminate packet
@@ -215,6 +223,9 @@ class Client(MessagingBase):
         Demande tous les salons du système de messagerie au serveur
         :return:
         """
+        if self.verbose:
+            print("sending overview request packet")
+
         self.build_and_send_packet(self.server_ip, 'overview', uid=self.uid)
 
     def action_join_channel(self, cid: int) -> None:
@@ -223,10 +234,16 @@ class Client(MessagingBase):
         :param cid: ID du salon (les IDs sont récupérés par l'Overview)
         :return:
         """
+        if self.verbose:
+            print("sending channel join request packet")
+
         self.build_and_send_packet(self.server_ip, 'connect', cid=cid, uid=self.uid)
 
     def action_send_message(self, message: str) -> None:
-        self.build_and_send_packet(self.server_ip, 'message', cid=self.current_conv, uid=self.uid, payload=message)
+        if self.verbose:
+            print("sending message packet")
+
+        self.build_and_send_packet(self.server_ip, 'M_SEND', cid=self.current_cid, uid=self.uid, payload=message)
 
     #
     # HANDLERS
@@ -296,16 +313,22 @@ class Client(MessagingBase):
             cid = pkt[self.MessagingProtocol].cid
             loaded_pkt_load = json.loads(self.bin_to_str(pkt[self.MessagingProtocol].load))
 
-            channel = self.convs[cid]
-            channel.add_member(str(loaded_pkt_load['id']), loaded_pkt_load['username'])
+            if cid != self.current_cid:
+                return
+
+            channel = self.current_conv
+            channel.add_member(int(loaded_pkt_load['id']), loaded_pkt_load['username'])
 
         elif subtype == 3:
             # Member left
             cid = pkt[self.MessagingProtocol].cid
             pkt_load = self.bin_to_str(pkt[self.MessagingProtocol].load)
 
-            channel = self.convs[cid]
-            channel.remove_member(str(pkt_load))
+            if cid != self.current_cid:
+                return
+
+            channel = self.current_conv
+            channel.remove_member(int(pkt_load))
 
     def handler_data_transmission(self, pkt: Packet, subtype: int) -> None:
         """
@@ -344,6 +367,7 @@ class Client(MessagingBase):
             # Connexion acceptée par le serveur à un salon
 
             # On récupère l'identifiant du salon et les détails envoyés en JSON
+
             pkt_cid = pkt[self.MessagingProtocol].cid
             load = self.bin_to_str(pkt[self.MessagingProtocol].load)
             load = json.loads(load)
@@ -356,9 +380,16 @@ class Client(MessagingBase):
             channel.update_members(load['members'])
 
             # On stocke l'objet de salon dans la liste
-            self.convs[pkt_cid] = channel
+            self.current_conv = channel
+            self.current_cid = pkt_cid
 
-    def handler_messages(self, pkt: Packet):
+            self.raise_or_call(self.hooks["connected"])
+
+    def handler_messages(self, pkt: Packet, subtype: int):
+
+        if subtype != 1:
+            return
+
         payload = pkt[self.MessagingProtocol].load
         cid = pkt[self.MessagingProtocol].cid
         uid = pkt[self.MessagingProtocol].uid
@@ -366,7 +397,10 @@ class Client(MessagingBase):
         if uid != self.uid:
             return
 
-        decompiled = json.loads(self.bin_to_str(payload))
+        if cid != self.current_cid:
+            return
+
+        decompiled = json.loads(self.bin_to_str(payload), strict=False)
 
         self.current_conv_messages.append(decompiled)
 
