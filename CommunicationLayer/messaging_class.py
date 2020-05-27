@@ -83,10 +83,10 @@ class MessagingBase:
         def update_cipher(self, ciphered: bool) -> None:
             self.ciphered = ciphered
 
-        def add_member(self, uid: int, info) -> None:
+        def add_member(self, uid: str, info) -> None:
             self.members[uid] = info
 
-        def remove_member(self, uid: int) -> None:
+        def remove_member(self, uid: str) -> None:
             del self.members[uid]
 
         def update_members(self, members: dict) -> None:

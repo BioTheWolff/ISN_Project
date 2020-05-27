@@ -235,7 +235,7 @@ class Client(MessagingBase):
         :return:
         """
         if self.verbose:
-            print("sending channel join request packet")
+            print(f"sending channel join {cid} request packet")
 
         self.build_and_send_packet(self.server_ip, 'connect', cid=cid, uid=self.uid)
 
@@ -317,7 +317,7 @@ class Client(MessagingBase):
                 return
 
             channel = self.current_conv
-            channel.add_member(int(loaded_pkt_load['id']), loaded_pkt_load['username'])
+            channel.add_member(str(loaded_pkt_load['id']), loaded_pkt_load['username'])
 
         elif subtype == 3:
             # Member left
@@ -328,7 +328,7 @@ class Client(MessagingBase):
                 return
 
             channel = self.current_conv
-            channel.remove_member(int(pkt_load))
+            channel.remove_member(str(pkt_load))
 
     def handler_data_transmission(self, pkt: Packet, subtype: int) -> None:
         """
@@ -404,7 +404,7 @@ class Client(MessagingBase):
 
         self.current_conv_messages.append(decompiled)
 
-        print(self.current_conv_messages)
+        self.raise_or_call(self.hooks['message'])
 
     #
     # ALIASES
