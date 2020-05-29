@@ -1,89 +1,145 @@
-from CommunicationLayer.client_communication import Client
 from tkinter import *
+from CommunicationLayer.client_communication import Client
 
-
-def test():
-    status.config(text="No response from the server")
-    request_1_button.place_forget()
-    request_2_button.place_forget()
-    channels_frame.place_forget()
-    members_frame.place_forget()
-    discovery_button.place(anchor=CENTER, relx=0.5, rely=0.55)
-
-
-def discover():
-    status.config(text="Discovering")
-    comm_layer('discovery')
+comm = Client(verbose=True)
 
 
 def discovered():
-    status.config(text="Server found")
-    discovery_button.place_forget()
-    request_1_button.place(anchor=CENTER, relx=0.5, rely=0.55)
-    request_2_button.place(anchor=CENTER, relx=0.5, rely=0.65)
+    server_search.place_forget()
+
+    titre.place(anchor=CENTER, relx=0.5, rely=0.3)
+    nickname.place(anchor=CENTER, relx=0.5, rely=0.5)
+    nickname_entry.place(anchor=CENTER, relx=0.5, rely=0.6)
+    bouton.place(anchor=CENTER, relx=0.8, rely=0.6)
 
 
-def request(username):
-    status.config(text="Trying to connect")
-    comm_layer('request', nickname=username)
+def discover():
+    comm('discovery')
+
+    titre.place(anchor=CENTER, relx=0.5, rely=0.4)
+    server_search.place(anchor=CENTER, relx=0.5, rely=0.6)
 
 
-def requested():
-    request_1_button.place_forget()
-    request_2_button.place_forget()
-    status.place_forget()
-
-    channels_frame.grid(row=0, column=0)
-    members_frame.grid(row=0, column=1)
-    status.grid(row=0, column=2)
-
-    status.config(text=f"Connected with name {comm_layer.nickname} (UID: {comm_layer.uid})")
+def no_response():
+    titre.place(anchor=CENTER, relx=0.5, rely=0.4)
+    server_lost_connection.place(anchor=CENTER, relx=0.5, rely=0.6)
 
 
-def init_render_channels():
-    chans = comm_layer.available_convs
+def propose_request():
+    name = nickname_entry.get()
+    nickname_entry.delete(0, 'end')
+    comm('request', nickname=name)
+
+
+def on_modify_request():
+    nickname_wrong.place(anchor=CENTER, relx=0.5, rely=0.7)
+
+
+def channel_choice():
+    global channels_list
+
+    nickname.place_forget()
+    nickname_entry.place_forget()
+    bouton.place_forget()
+    nickname_wrong.place_forget()
+    nickname_entry.delete(0, 'end')
+
+    titre.place_forget()
+    titre.pack(side=TOP)
+
+    chans = comm.available_convs
     for i in chans:
-        channels_list[i] = Button(channels_frame, text=chans[i], command=lambda: join_chan_id(i))
-        channels_list[i].pack()
+        channels_list[i] = Button(fenetre, text=chans[i], command=lambda c=i: join_chan_id(c))
+        channels_list[i].pack(side=TOP)
 
 
 def join_chan_id(cid):
-    comm_layer('join_channel', cid=cid)
+    comm('join_channel', cid=cid)
 
 
-def terminate():
-    comm_layer.close_session()
-    status.config(text="Waiting...")
-    terminate_button.pack_forget()
-    discovery_button.pack()
+def leave_channel():
+    global messages
+
+    comm("leave_current_channel")
+
+    frametop.pack_forget()
+    frameconv.pack_forget()
+    framebottom.pack_forget()
+
+    for m in messages:
+        m.pack_forget()
+
+    channel_choice()
 
 
-win = Tk()
-win.geometry('900x600')
-win.configure(bg="grey")
-status = Label(text="Waiting...", bg='grey', fg='white')
+def main_frame():
+    titre.pack_forget()
 
-discovery_button = Button(win, text='Discovery', command=discover)
-request_1_button = Button(win, text="Request for 'BioWolf'", command=lambda: request('BioWolf'))
-request_2_button = Button(win, text="Request for 'Shetland'", command=lambda: request('Shetland'))
-terminate_button = Button(win, text="Close session", command=terminate)
+    for i in channels_list:
+        channels_list[i].pack_forget()
 
-channels_frame = Frame(bg='darkgrey', height=600, width=200)
+    frametop.pack(side=TOP)
+    titre_salon.config(text=f"SAVANNA : {comm.current_conv.name}")
+
+    frameconv.pack(side=TOP)
+    framebottom.pack(side=BOTTOM)
+
+
+def send_message():
+    comm("send_message", message=message_entry.get())
+    message_entry.delete(0, 'end')
+
+
+def on_message():
+    global messages
+
+    message = comm.current_conv_messages[-1]
+    sender_name = comm.current_conv.members[str(message['sender_id'])]
+
+    text = f"{sender_name} : {message['content']}"
+
+    t = Label(frameconv, text=text)
+    t.pack(side=TOP)
+    messages.append(t)
+
+
+fenetre = Tk()
+fenetre.geometry('800x600')
+titre = Label(fenetre, text="SAVANNA")
+server_search = Label(fenetre, text="Recherche du serveur")
+server_lost_connection = Label(fenetre, text="Le serveur ne répond pas")
+nickname = Label(fenetre, text="Entrez votre nom d'utilisateur")
+nickname_entry = Entry(fenetre, width=50)
+nickname_wrong = Label(fenetre, text="Votre nom d'utilisateur n'est pas valide ou est déjà pris")
+bouton = Button(fenetre, text="OK", command=propose_request)
+
+# Main frame
+frametop = Frame(fenetre, bg="grey", borderwidth=2, relief=GROOVE, height=20, width=800)
+titre_salon = Label(frametop, text="Titre")
+titre_salon.pack()
+
+frameconv = Frame(fenetre, bg="dark grey", borderwidth=2, relief=GROOVE, height=540, width=800)
+frameconv.pack_propagate(0)
+
+framebottom = Frame(fenetre, bg="dark grey", borderwidth=2, relief=GROOVE, height=30, width=800)
+framebottom.pack_propagate(0)
+message_entry = Entry(framebottom, width=80)
+message_entry.pack(side=LEFT)
+Button(framebottom, text="Envoyer", command=send_message).pack(side=LEFT)
+Button(framebottom, text="Quitter le salon", command=leave_channel).pack(side=RIGHT)
+
 channels_list = {}
+messages = []
 
-members_frame = Frame(bg='darkgrey', height=600, width=200)
+comm.bind_hook('successful_discovery', discovered)
+comm.bind_hook('no_response', no_response)
+comm.bind_hook('modify_request', on_modify_request)
+comm.bind_hook("successful_request", lambda: None)
+comm.bind_hook("init_channels_list", channel_choice)
+comm.bind_hook("connected", main_frame)
+comm.bind_hook("message", on_message)
 
-comm_layer = Client(verbose=True)
-comm_layer.bind_hook('no_response', test)
+discover()
 
-
-comm_layer.bind_hook('successful_discovery', discovered)
-comm_layer.bind_hook('successful_request', requested)
-comm_layer.bind_hook('init_channels_list', init_render_channels)
-
-status.place(anchor=CENTER, relx=0.5, rely=0.45)
-discovery_button.place(anchor=CENTER, relx=0.5, rely=0.55)
-
-win.mainloop()
-
-comm_layer.close_session()
+fenetre.mainloop()
+comm.close_session()
