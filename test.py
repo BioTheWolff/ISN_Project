@@ -57,6 +57,21 @@ def join_chan_id(cid):
     comm('join_channel', cid=cid)
 
 
+def leave_channel():
+    global messages
+
+    comm("leave_current_channel")
+
+    frametop.pack_forget()
+    frameconv.pack_forget()
+    framebottom.pack_forget()
+
+    for m in messages:
+        m.pack_forget()
+
+    channel_choice()
+
+
 def main_frame():
     titre.pack_forget()
 
@@ -111,7 +126,7 @@ framebottom.pack_propagate(0)
 message_entry = Entry(framebottom, width=80)
 message_entry.pack(side=LEFT)
 Button(framebottom, text="Envoyer", command=send_message).pack(side=LEFT)
-Button(framebottom, text="Quitter le salon").pack(side=RIGHT)
+Button(framebottom, text="Quitter le salon", command=leave_channel).pack(side=RIGHT)
 
 channels_list = {}
 messages = []

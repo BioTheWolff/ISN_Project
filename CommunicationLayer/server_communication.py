@@ -143,7 +143,7 @@ class Server(MessagingBase):
             for id_ in self.convs:
                 chan = self.convs[id_]
                 if chan.members and uid in chan.members:
-                    chan.remove_member(uid)
+                    chan.remove_member(str(uid))
 
                     self.tell_members_of_channel(id_, 'user_left', load=uid)
 
@@ -160,7 +160,7 @@ class Server(MessagingBase):
         :return:
         """
 
-        if subtype == 3:
+        if subtype >= 3:
             return
 
         ip_dst = pkt[IP].src
@@ -189,7 +189,7 @@ class Server(MessagingBase):
             self.tell_members_of_channel(pkt_cid, 'user_joined', load=dumped_new_member)
 
             # On ajoute le membre au salon
-            channel.add_member(uid_dst, ip_dst)
+            channel.add_member(str(uid_dst), ip_dst)
 
             # On constitue la liste des membres et les détails
             # On doit changer la consitution de la liste car la liste côté serveur est ID => IP
@@ -200,6 +200,15 @@ class Server(MessagingBase):
             dumped_details = json.dumps(details)
 
             self.build_and_send_packet(ip_dst, 'R_connect', uid=uid_dst, cid=pkt_cid, payload=dumped_details)
+
+        elif subtype == 2:
+            pkt_cid = pkt[self.MessagingProtocol].cid
+            uid = pkt[self.MessagingProtocol].uid
+            channel = self.convs[pkt_cid]
+
+            if channel.members and uid in channel.members:
+                channel.remove_member(str(uid))
+                self.tell_members_of_channel(pkt_cid, 'user_left', load=uid)
 
     def handler_messages(self, pkt: Packet, subtype: int):
 

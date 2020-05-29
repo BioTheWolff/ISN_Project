@@ -13,8 +13,6 @@ class Client(MessagingBase):
     tid = None
     nickname = None
 
-    # Les conversations sont sous la forme [conv1_id, conv2_id, ...]
-    convs = None
     available_convs = None
 
     current_conv = None
@@ -125,6 +123,7 @@ class Client(MessagingBase):
             'discovery': None,
             'terminate': None,
             'request_available_channels': None,
+            'leave_current_channel': None,
 
             'request': ['nickname'],
             'join_channel': ['cid'],
@@ -210,12 +209,17 @@ class Client(MessagingBase):
 
             # Variables à redéfinir comme avant la connexion
             self.uid = -1
-            self.nickname = ''
+            self.tid = -1
+            self.available_convs = {}
             self.server_ip = ''
-            self.convs = []
+            self.nickname = ''
+            self.current_cid = -1
+            self.current_conv_messages = []
+
             self.answers = {
                 'discovery': False,
-                'request': False
+                'request': False,
+                'overview': False
             }
 
     def action_request_available_channels(self) -> None:
@@ -238,6 +242,9 @@ class Client(MessagingBase):
             print(f"sending channel join {cid} request packet")
 
         self.build_and_send_packet(self.server_ip, 'connect', cid=cid, uid=self.uid)
+
+    def action_leave_current_channel(self):
+        self.build_and_send_packet(self.server_ip, 'disconnect', cid=self.current_cid, uid=self.uid)
 
     def action_send_message(self, message: str) -> None:
         if self.verbose:
