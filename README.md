@@ -1,10 +1,10 @@
-# ISN_Project
+# ISN Project
 
-_WORK IN PROGRESS_
-
-Projet de système de communication instantané pour le projet ISN BAC 2020.
+Projet de système de messagerie instantané pour le projet ISN BAC 2020.
 
 Le projet est basé sur tkinter pour le frontend et sur scapy pour le backend. Tout a été construit depuis la base même d'un paquet réseau Scapy.
+
+**ATTENTION**: Il faut installer WinPcap pour que le programme fonctionne. Par défaut, windows ne peut transmettre de paquets ou les écouter nativement
 
 Le client communique au serveur par client_communication.py et le serveur (headless) concerne le fichier server_communication.py
 
