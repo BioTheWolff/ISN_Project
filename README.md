@@ -9,3 +9,7 @@ Le projet est basé sur tkinter pour le frontend et sur scapy pour le backend. T
 Le client communique au serveur par client_communication.py et le serveur (headless) concerne le fichier server_communication.py
 
 Étant très mauvais en tkinter, je me suis concentré sur la partie backend tandis que mes deux camarades travaillent sur la partie frontend.
+
+Comment utiliser:
+
+Il faut lancer dans un terminal le server.py puis lancer client.py (on peut lancer plusieurs clients, tout a été fait pour ça). Sans le serveur allumé, le client ne pourra se connecter.
